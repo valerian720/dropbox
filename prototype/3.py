@@ -1,7 +1,7 @@
 import requests
 import json
 
-token = open("secret.token", "r").read()
+token = open("secret/secret.token", "r").read()
 # super secret
 
 print(f"prototype 3: upload test2.txt")

@@ -1,6 +1,6 @@
 import requests
 
-token = open("secret.token", "r").read()
+token = open("secret/secret.token", "r").read()
 # super secret
 
 print(f"prototype 4: get token from login and password")

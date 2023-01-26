@@ -1,6 +1,6 @@
 import requests
 
-token = open("secret.token", "r").read()
+token = open("secret/secret.token", "r").read()
 # super secret
 
 print(f"prototype 1: just using api token (to get list of folders)")
