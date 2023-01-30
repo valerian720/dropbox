@@ -102,7 +102,7 @@ def check_if_token_valid(token):
             "include_mounted_folders": True, "include_non_downloadable_files": True, "path": "", "recursive": False}
     # 
     x = requests.post(url, headers=headers, json=body)
-    return not x.text.startswith("Eror")
+    return not (x.text.startswith("Eror") or ("error" in x.json()))
 
 def get_token(name):
     token = get_cashed_token(name)
@@ -137,14 +137,8 @@ def get_paths(operation_type):
   # 
   return local_path, cloud_path
 
-def check_if_file_exists_local(local_path): #TODO
-   return True
-
-def check_if_file_exists_cloud(cloud_path): #TODO
-   return True
-
 # 
-def download_file_from_cloud(token, local_path, cloud_path): #TODO
+def download_file_from_cloud(token, local_path, cloud_path):
   domain = "https://content.dropboxapi.com/"
   api_path = "2/files/download"
 
@@ -162,7 +156,7 @@ def download_file_from_cloud(token, local_path, cloud_path): #TODO
   with open(local_path, 'wb') as f:
       f.write(req_result.content)
 
-def upload_file_to_cloud(token, local_path, cloud_path): #TODO
+def upload_file_to_cloud(token, local_path, cloud_path):
   domain = "https://content.dropboxapi.com/"
   api_path = "2/files/upload"
 
@@ -208,11 +202,10 @@ if __name__ == '__main__':
   local_path, cloud_path = get_paths(operation_type)
   print(f"local_path = {local_path}, cloud_path = {cloud_path}")
   # 
-  if (check_if_file_exists_local(local_path) and check_if_file_exists_cloud(cloud_path)):
-    if operation_type == 'get':
-      download_file_from_cloud(token, local_path, cloud_path)
-    if operation_type == 'put': 
-        upload_file_to_cloud(token, local_path, cloud_path)
+  if operation_type == 'get':
+    download_file_from_cloud(token, local_path, cloud_path)
+  if operation_type == 'put': 
+      upload_file_to_cloud(token, local_path, cloud_path)
 
 
 # /////////////////
