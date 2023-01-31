@@ -8,10 +8,20 @@ directory_cashed = "cashed"
 directory_cashed_app = f"{directory_cashed}/key"
 filename_key_app = "app.json"
 # 
+CRED = '\033[91m'
+CEND = '\033[0m'
+# 
 
 def get_from_args(key):
   return [item.split('=')[1] for item in sys.argv if item.startswith(f'--{key}=')]
 # 
+
+def is_json(text):
+  try:
+    json.loads(text)
+  except ValueError as e:
+    return False
+  return True
 
 def get_name():
    return get_from_args("name")[0]
@@ -52,7 +62,7 @@ def request_new_token():
     app_secret = key_secret["secret"]
 
     # build the authorization URL:
-    authorization_url = "https://www.dropbox.com/oauth2/authorize?client_id=%s&response_type=code" % app_key
+    authorization_url = f"https://www.dropbox.com/oauth2/authorize?client_id={app_key}&response_type=code"
 
     print('Go to the following URL and allow access:')
     print(authorization_url)
@@ -70,8 +80,13 @@ def request_new_token():
     }
     r = requests.post(token_url, data=params)
     print("request_new_token")
-    print(r.text)
-    token = r.json()["access_token"]
+    # print(r.text)
+    if(not ("error" in r.json())):
+      token = r.json()["access_token"]
+    else:
+      print(f"{CRED}!!! error: cant create token{CEND}")
+      print(r.json()["error_description"])
+      return ""
     # 
     path = f"{directory_cashed}/{name}.secret"
     with open(path, 'w') as fp:
@@ -101,8 +116,8 @@ def check_if_token_valid(token):
     body = {"include_deleted": False, "include_has_explicit_shared_members": False, "include_media_info": False,
             "include_mounted_folders": True, "include_non_downloadable_files": True, "path": "", "recursive": False}
     # 
-    x = requests.post(url, headers=headers, json=body)
-    return not (x.text.startswith("Eror") or ("error" in x.json()))
+    r = requests.post(url, headers=headers, json=body)
+    return not (r.text.startswith("Eror") or ("error" in r.json()))
 
 def get_token(name):
     token = get_cashed_token(name)
@@ -148,13 +163,19 @@ def download_file_from_cloud(token, local_path, cloud_path):
       'Dropbox-API-Arg': json.dumps({"path": cloud_path}), 
   }
 
-  req_result = requests.post(url, headers=headers)
   print("download_file_from_cloud")
-  print(req_result.text)
+  print("request in progress...")
+  r = requests.post(url, headers=headers)
+  if not (is_json(r.text) and "error_summary" in r.json()):
+    print("writing file...")
 
-  os.makedirs(os.path.dirname(local_path), exist_ok=True)
-  with open(local_path, 'wb') as f:
-      f.write(req_result.content)
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    with open(local_path, 'wb') as f:
+        f.write(r.content)
+    print("done")
+  else:
+    print(r.json()["error_summary"])
+    print(f"{CRED}!!! error: cant find cloud file '{cloud_path}'{CEND}")
 
 def upload_file_to_cloud(token, local_path, cloud_path):
   domain = "https://content.dropboxapi.com/"
@@ -166,12 +187,14 @@ def upload_file_to_cloud(token, local_path, cloud_path):
       'Dropbox-API-Arg': json.dumps({"autorename":False,"mode":"add","mute":False,"path":cloud_path,"strict_conflict":False}), 
       'Content-Type': 'application/octet-stream',
   }
-
-  file = open(local_path,'rb')
-  # 
-  req_result = requests.post(url, headers=headers, data=file)
-  print("upload_file_to_cloud")
-  print(req_result.text)
+  if os.path.isfile(local_path):
+    file = open(local_path,'rb')
+    # 
+    req_result = requests.post(url, headers=headers, data=file)
+    print("upload_file_to_cloud")
+    print(req_result.text)
+  else:
+    print(f"{CRED}!!! error: cant find file '{local_path}'{CEND}")
 
 # ///////////////////////////////////////////////////////////////////////////////
 # check if this app has cashed app key and secret, if no then request from user
@@ -199,13 +222,16 @@ if __name__ == '__main__':
   token = get_token(name)
   operation_type = get_operation_type()
   # # 
-  local_path, cloud_path = get_paths(operation_type)
-  print(f"local_path = {local_path}, cloud_path = {cloud_path}")
-  # 
-  if operation_type == 'get':
-    download_file_from_cloud(token, local_path, cloud_path)
-  if operation_type == 'put': 
+  if token != "":
+    local_path, cloud_path = get_paths(operation_type)
+    print(f"local_path = {local_path}, cloud_path = {cloud_path}")
+    # 
+    if operation_type == 'get':
+      download_file_from_cloud(token, local_path, cloud_path)
+    elif operation_type == 'put': 
       upload_file_to_cloud(token, local_path, cloud_path)
+    else:
+      print(f"{CRED}!!! error: cant process type of '{operation_type}'{CEND}")
 
 
 # /////////////////
